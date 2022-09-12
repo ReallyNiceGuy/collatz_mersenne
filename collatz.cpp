@@ -116,7 +116,6 @@ bignum mersenne(int power)
 
 int main(int argc, char **argv)
 {
-  boost::chrono::system_clock::time_point start = boost::chrono::system_clock::now();
   if (argc > 1)
   {
     char *pos;
@@ -132,11 +131,12 @@ int main(int argc, char **argv)
       exit(1);
     }
     bignum n{ mersenne(val) };
+    boost::chrono::system_clock::time_point start = boost::chrono::system_clock::now();
     auto ret{collatz(n)};
     boost::chrono::duration<double> dur = boost::chrono::system_clock::now() - start;
     auto sec = dur.count();
     int min = sec/60;
     sec = sec-(min*60);
-    std::cout << val << "," << ret <<"," << "\"" << min << "m" << sec << "s\"" << std::endl;
+    std::cout << val << "," << ret <<"," << "\"" << min << "m" << sec << "s\"," << dur.count() << std::endl;
   }
 }
