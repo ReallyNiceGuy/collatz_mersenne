@@ -4,6 +4,8 @@
 #include <cstdlib>
 #include <boost/io/ios_state.hpp>
 #include <ios>
+#include <boost/chrono.hpp>
+
 
 using std::vector;
 using std::size_t;
@@ -114,6 +116,7 @@ bignum mersenne(int power)
 
 int main(int argc, char **argv)
 {
+  boost::chrono::system_clock::time_point start = boost::chrono::system_clock::now();
   if (argc > 1)
   {
     char *pos;
@@ -130,6 +133,10 @@ int main(int argc, char **argv)
     }
     bignum n{ mersenne(val) };
     auto ret{collatz(n)};
-    std::cout << ret << std::endl;
+    boost::chrono::duration<double> dur = boost::chrono::system_clock::now() - start;
+    auto sec = dur.count();
+    int min = sec/60;
+    sec = sec-(min*60);
+    std::cout << val << "," << ret <<"," << "\"" << min << "m" << sec << "s\"" << std::endl;
   }
 }
