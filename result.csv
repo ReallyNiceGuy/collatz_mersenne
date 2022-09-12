@@ -1,4 +1,4 @@
-"Index","Mersenne"," Collatz"," Time"
+"Index","Mersenne (2^n)-1"," Collatz"," Time"
 1,2,7,"0m0.002s"
 2,3,16,"0m0.002s"
 3,5,106,"0m0.002s"
