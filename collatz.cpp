@@ -95,6 +95,8 @@ uint64_t collatz(bignum& n)
 
 bignum mersenne(int power)
 {
+  if (power == 0)
+    return bignum{.num{0}};
   int rest=(power)%64;
   int items=(power)/64;
   bignum ret;
@@ -118,7 +120,12 @@ int main(int argc, char **argv)
     int val = strtol(argv[1], &pos, 10);
     if (pos == argv[0])
     {
-      std::cerr << "Needs a number as parameter" << std::endl;
+      std::cerr << "Needs a positive number as parameter" << std::endl;
+      exit(1);
+    }
+    if (val<=0)
+    {
+      std::cerr << "Needs a positive number as parameter" << std::endl;
       exit(1);
     }
     bignum n{ mersenne(val) };
