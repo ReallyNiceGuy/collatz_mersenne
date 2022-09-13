@@ -58,8 +58,8 @@ int bignum::by2n()
   {
     num[i]=(num[i]>>lshift)|(num[i+1]<<rshift);
   }
-  num.back()>>=lshift;
-  if (num.size()>1 && num[num.size()-1]==0 ) num.pop_back();
+  num[num.size()-1]>>=lshift;
+  if (num[num.size()-1]==0 && num.size()>1) num.pop_back(); //remove MSI if 0
   return lshift+i;
 }
 
@@ -68,7 +68,7 @@ int bignum::x3p1by2()
   //odd * 3 + 1 will always be even, so
   //avoid work and do 1 right shift at the same time
   //saves a couple of percent
-  if (num.back()>0x4000000000000000ULL) num.push_back(0);
+  if (num.back()>0x5555555555555554ULL) num.push_back(0);
   uint128_t res{((uint128_t)3)*num[0]+1}; //3x+1 in uint128_t, we save the carry on the upper part
   num[0] = res; //lower part of 3x+carry
   res>>=64; //pull carry into lower uint64_t
@@ -79,8 +79,8 @@ int bignum::x3p1by2()
     res>>=64; //pull carry into lower uint64_t
     num[i-1]=(num[i-1]>>1)|(num[i]<<63); //divide previous by 2 and pull lowest bit from this one
   }
-  num.back()>>=1; //divide MSI by 2
-  if (num.size()>1 && num[num.size()-1]==0 ) num.pop_back(); //remove MSI if 0
+  num[num.size()-1]>>=1; //divide MSI by 2
+  if (num[num.size()-1]==0 && num.size()>1) num.pop_back(); //remove MSI if 0
   return 2;
 }
 
