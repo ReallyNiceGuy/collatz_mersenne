@@ -19,7 +19,7 @@ struct bignum
   // x / (2^n)
   int by2n();
   bool is_odd() const { return num[0]&1;}
-  bool is_one() const { return num.size()==1 && num[0]==1;}
+  bool is_one() const { return num[0]==1 && num.size()==1;}
 };
 
 std::ostream& operator<<(std::ostream& o, const bignum& n)
