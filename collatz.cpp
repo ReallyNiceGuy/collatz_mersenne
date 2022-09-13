@@ -1,14 +1,24 @@
 #include <iostream>
+#include <fstream>
 #include <iomanip>
 #include <vector>
 #include <cstdlib>
+#include <csignal>
 #include <boost/io/ios_state.hpp>
 #include <ios>
 #include <boost/chrono.hpp>
 
+bool interrupted{false};
+
+void signal_handler(int signal)
+{
+  interrupted = true;
+}
 
 using std::vector;
 using std::size_t;
+using std::ostream;
+using std::istream;
 typedef unsigned __int128 uint128_t;
 
 struct bignum
@@ -21,6 +31,52 @@ struct bignum
   bool is_odd() const { return num[0]&1;}
   bool is_one() const { return num[0]==1 && num.size()==1;}
 };
+
+ostream& write(ostream& ofs, const bignum& n)
+{
+  vector<uint64_t>::size_type len{n.num.size()};
+  vector<uint64_t>::size_type cap{n.num.capacity()};
+  ofs.write((char*)&cap,sizeof(cap));
+  ofs.write((char*)&len,sizeof(len));
+  ofs.write((char*)&n.num[0],sizeof(uint64_t)*len);
+  return ofs;
+}
+
+istream& read(istream& ifs, bignum& n)
+{
+  vector<uint64_t>::size_type len{};
+  vector<uint64_t>::size_type cap{};
+  ifs.read((char*)&cap,sizeof(cap));
+  ifs.read((char*)&len,sizeof(len));
+  n.num.clear();
+  n.num.reserve(cap);
+  n.num.resize(len);
+  ifs.read((char*)&n.num[0],sizeof(uint64_t)*len);
+  return ifs;
+}
+
+void save(const std::string& fn, const bignum&n, double elapsed, uint64_t count)
+{
+  std::ofstream ofs(fn, std::ios_base::binary | std::ios_base::out | std::ios_base::trunc);
+  write(ofs,n);
+  ofs.write((char*)&count,sizeof(count));
+  ofs.write((char*)&elapsed,sizeof(elapsed));
+}
+
+bool load(const std::string& fn, bignum&n, boost::chrono::system_clock::time_point&t, uint64_t& count)
+{
+  std::ifstream ifs(fn, std::ios_base::binary | std::ios_base::in);
+  if (ifs.fail()) return false;
+  read(ifs,n);
+  if (ifs.fail()) return false;
+  ifs.read((char*)&count,sizeof(count));
+  if (ifs.fail()) return false;
+  double d;
+  ifs.read((char*)&d,sizeof(d));
+  t = boost::chrono::system_clock::now() -
+      boost::chrono::duration_cast<boost::chrono::system_clock::time_point::duration>(boost::chrono::duration<double>(d));
+  return !ifs.fail();
+}
 
 std::ostream& operator<<(std::ostream& o, const bignum& n)
 {
@@ -84,10 +140,9 @@ int bignum::x3p1by2()
   return 2;
 }
 
-uint64_t collatz(bignum& n)
+uint64_t collatz(bignum& n, uint64_t steps)
 {
-  uint64_t steps{};
-  while (!n.is_one())
+  while (!(n.is_one() || interrupted))
   {
     if (n.is_odd()) steps+=n.x3p1by2();
     else steps+=n.by2n();
@@ -118,8 +173,12 @@ int main(int argc, char **argv)
 {
   if (argc > 1)
   {
+      // Install a signal handler
+    std::signal(SIGINT, signal_handler);
+    std::signal(SIGTERM, signal_handler);
     char *pos;
     int val = strtol(argv[1], &pos, 10);
+    uint64_t steps{};
     if (pos == argv[0])
     {
       std::cerr << "Needs a positive number as parameter" << std::endl;
@@ -130,13 +189,33 @@ int main(int argc, char **argv)
       std::cerr << "Needs a positive number as parameter" << std::endl;
       exit(1);
     }
-    bignum n{ mersenne(val) };
-    boost::chrono::system_clock::time_point start = boost::chrono::system_clock::now();
-    auto ret{collatz(n)};
+    std::string cache{argv[1]};
+    cache+=".cache";
+    boost::chrono::system_clock::time_point start;
+    bignum n;
+    if (!load(cache,n,start, steps))
+    {
+      n=mersenne(val);
+      std::cerr << "starting from scratch: " << argv[1] << std::endl;
+      start = boost::chrono::system_clock::now();
+    }
+    else
+    {
+      std::cerr << "loaded cache file: " << cache << std::endl;
+    }
+    auto ret{collatz(n, steps)};
+    if (interrupted)
+    {
+      boost::chrono::duration<double> dur = boost::chrono::system_clock::now() - start;
+      std::cerr << "\ninterrupted, saving cache file: " << cache << std::endl;
+      save(cache,n, dur.count(), ret);
+      exit(0);
+    }
     boost::chrono::duration<double> dur = boost::chrono::system_clock::now() - start;
     auto sec = dur.count();
     int min = sec/60;
     sec = sec-(min*60);
     std::cout << val << "," << ret <<"," << "\"" << min << "m" << sec << "s\"," << dur.count() << std::endl;
+    std::remove(cache.c_str());
   }
 }

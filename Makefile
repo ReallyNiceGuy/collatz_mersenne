@@ -1,5 +1,5 @@
 CC=g++
-CFLAGS=-O3 -std=c++17
+CFLAGS=-O3 -std=c++17 -Wall
 DEPS = 
 OBJ = collatz.o 
 LIBS = -lboost_chrono
