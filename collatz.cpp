@@ -8,11 +8,11 @@
 #include <ios>
 #include <boost/chrono.hpp>
 
-bool interrupted{false};
+int interrupted{0};
 
 void signal_handler(int signal)
 {
-  interrupted = true;
+  interrupted = signal;
 }
 
 using std::vector;
@@ -61,6 +61,7 @@ void save(const std::string& fn, const bignum&n, double elapsed, uint64_t count)
   write(ofs,n);
   ofs.write((char*)&count,sizeof(count));
   ofs.write((char*)&elapsed,sizeof(elapsed));
+  std::cerr << "Elapsed: " << elapsed << ", steps: " << count << ", bits (approx): " << n.num.size()*64 << std::endl;
 }
 
 bool load(const std::string& fn, bignum&n, boost::chrono::system_clock::time_point&t, uint64_t& count)
@@ -176,6 +177,7 @@ int main(int argc, char **argv)
       // Install a signal handler
     std::signal(SIGINT, signal_handler);
     std::signal(SIGTERM, signal_handler);
+    std::signal(SIGHUP, signal_handler);
     char *pos;
     int val = strtol(argv[1], &pos, 10);
     uint64_t steps{};
@@ -203,19 +205,28 @@ int main(int argc, char **argv)
     {
       std::cerr << "loaded cache file: " << cache << std::endl;
     }
-    auto ret{collatz(n, steps)};
+
+calculate:
+    steps = collatz(n, steps);
     if (interrupted)
     {
       boost::chrono::duration<double> dur = boost::chrono::system_clock::now() - start;
       std::cerr << "\ninterrupted, saving cache file: " << cache << std::endl;
-      save(cache,n, dur.count(), ret);
-      exit(0);
+      save(cache,n, dur.count(), steps);
+      if (interrupted == SIGHUP)
+      {
+        interrupted = 0;
+        goto calculate;
+      }
     }
-    boost::chrono::duration<double> dur = boost::chrono::system_clock::now() - start;
-    auto sec = dur.count();
-    int min = sec/60;
-    sec = sec-(min*60);
-    std::cout << val << "," << ret <<"," << "\"" << min << "m" << sec << "s\"," << dur.count() << std::endl;
-    std::remove(cache.c_str());
+    else
+    {
+      boost::chrono::duration<double> dur = boost::chrono::system_clock::now() - start;
+      auto sec = dur.count();
+      int min = sec/60;
+      sec = sec-(min*60);
+      std::cout << val << "," << steps <<"," << "\"" << min << "m" << sec << "s\"," << dur.count() << std::endl;
+      std::remove(cache.c_str());
+    }
   }
 }
