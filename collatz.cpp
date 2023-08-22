@@ -25,9 +25,9 @@ struct bignum
 {
   vector<uint64_t> num;
   // (3*x + 1) / 2
-  int x3p1by2();
+  uint64_t x3p1by2();
   // x / (2^n)
-  int by2n();
+  uint64_t by2n(uint64_t &zero_run);
   bool is_odd() const { return num[0]&1;}
   bool is_one() const { return num[0]==1 && num.size()==1;}
 };
@@ -55,16 +55,17 @@ istream& read(istream& ifs, bignum& n)
   return ifs;
 }
 
-void save(const std::string& fn, const bignum&n, double elapsed, uint64_t count)
+void save(const std::string& fn, const bignum&n, double elapsed, uint64_t count, uint64_t zero_run)
 {
   std::ofstream ofs(fn, std::ios_base::binary | std::ios_base::out | std::ios_base::trunc);
   write(ofs,n);
   ofs.write((char*)&count,sizeof(count));
   ofs.write((char*)&elapsed,sizeof(elapsed));
+  ofs.write((char*)&zero_run,sizeof(zero_run));
   std::cerr << "Elapsed: " << elapsed << ", steps: " << count << ", bits (approx): " << n.num.size()*64 << std::endl;
 }
 
-bool load(const std::string& fn, bignum&n, boost::chrono::system_clock::time_point&t, uint64_t& count)
+bool load(const std::string& fn, bignum&n, boost::chrono::system_clock::time_point&t, uint64_t& count, uint64_t& zero_run)
 {
   std::ifstream ifs(fn, std::ios_base::binary | std::ios_base::in);
   if (ifs.fail()) return false;
@@ -74,8 +75,10 @@ bool load(const std::string& fn, bignum&n, boost::chrono::system_clock::time_poi
   if (ifs.fail()) return false;
   double d;
   ifs.read((char*)&d,sizeof(d));
+  if (ifs.fail()) return false;
   t = boost::chrono::system_clock::now() -
       boost::chrono::duration_cast<boost::chrono::system_clock::time_point::duration>(boost::chrono::duration<double>(d));
+  ifs.read((char*)&zero_run,sizeof(zero_run));
   return !ifs.fail();
 }
 
@@ -89,9 +92,9 @@ std::ostream& operator<<(std::ostream& o, const bignum& n)
   return o;
 }
 
-int bignum::by2n()
+uint64_t bignum::by2n(uint64_t& zero_run)
 {
-  int i{};
+  uint64_t i{};
   if (num[0] == 0) //full item right shift, cheap
   {
     //This is very unlikely to happen at all, but as
@@ -117,10 +120,12 @@ int bignum::by2n()
   }
   num[num.size()-1]>>=lshift;
   if (num[num.size()-1]==0 && num.size()>1) num.pop_back(); //remove MSI if 0
-  return lshift+i;
+  auto steps=lshift+i;
+  if (steps>=zero_run) zero_run = steps+1;
+  return steps;
 }
 
-int bignum::x3p1by2()
+uint64_t bignum::x3p1by2()
 {
   //odd * 3 + 1 will always be even, so
   //avoid work and do 1 right shift at the same time
@@ -141,12 +146,12 @@ int bignum::x3p1by2()
   return 2;
 }
 
-uint64_t collatz(bignum& n, uint64_t steps)
+uint64_t collatz(bignum& n, uint64_t steps, uint64_t& zero_run)
 {
   while (!(n.is_one() || interrupted))
   {
     if (n.is_odd()) steps+=n.x3p1by2();
-    else steps+=n.by2n();
+    else steps+=n.by2n(zero_run);
   }
   return steps;
 }
@@ -181,6 +186,7 @@ int main(int argc, char **argv)
     char *pos;
     int val = strtol(argv[1], &pos, 10);
     uint64_t steps{};
+    uint64_t zero_run{};
     if (pos == argv[0])
     {
       std::cerr << "Needs a positive number as parameter" << std::endl;
@@ -195,7 +201,7 @@ int main(int argc, char **argv)
     cache+=".cache";
     boost::chrono::system_clock::time_point start;
     bignum n;
-    if (!load(cache,n,start, steps))
+    if (!load(cache,n,start, steps, zero_run))
     {
       n=mersenne(val);
       std::cerr << "starting from scratch: " << argv[1] << std::endl;
@@ -203,16 +209,17 @@ int main(int argc, char **argv)
     }
     else
     {
+
       std::cerr << "loaded cache file: " << cache << std::endl;
     }
 
 calculate:
-    steps = collatz(n, steps);
+    steps = collatz(n, steps, zero_run);
     if (interrupted)
     {
       boost::chrono::duration<double> dur = boost::chrono::system_clock::now() - start;
       std::cerr << "\ninterrupted, saving cache file: " << cache << std::endl;
-      save(cache,n, dur.count(), steps);
+      save(cache,n, dur.count(), steps, zero_run);
       if (interrupted == SIGHUP)
       {
         interrupted = 0;
@@ -225,7 +232,7 @@ calculate:
       auto sec = dur.count();
       int min = sec/60;
       sec = sec-(min*60);
-      std::cout << val << "," << steps <<"," << "\"" << min << "m" << sec << "s\"," << dur.count() << std::endl;
+      std::cout << val << "," << steps <<"," << "\"" << min << "m" << sec << "s\"," << dur.count() << ", 2^" << zero_run << std::endl;
       std::remove(cache.c_str());
     }
   }
