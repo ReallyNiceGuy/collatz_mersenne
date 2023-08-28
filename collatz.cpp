@@ -8,7 +8,7 @@
 #include <ios>
 #include <boost/chrono.hpp>
 
-int interrupted{0};
+volatile int interrupted{0};
 
 void signal_handler(int signal)
 {
