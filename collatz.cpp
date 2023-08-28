@@ -114,12 +114,13 @@ uint64_t bignum::by2n(uint64_t& zero_run)
 
   int lshift = __builtin_ctzll(num[0]); // How many zeroes left?
   int rshift = 64-lshift;
-  for(size_t i=0;i<num.size()-1;++i)
+  auto last = num.size()-1;
+  for(size_t i=0;i<last;++i)
   {
     num[i]=(num[i]>>lshift)|(num[i+1]<<rshift);
   }
-  num[num.size()-1]>>=lshift;
-  if (num[num.size()-1]==0 && num.size()>1) num.pop_back(); //remove MSI if 0
+  num[last]>>=lshift;
+  if (num[last]==0 && num.size()>1) num.pop_back(); //remove MSI if 0
   auto steps=lshift+i;
   if (steps>=zero_run) zero_run = steps+1;
   return steps;
