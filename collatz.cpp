@@ -4,7 +4,6 @@
 #include <vector>
 #include <cstdlib>
 #include <csignal>
-#include <boost/io/ios_state.hpp>
 #include <ios>
 #include <boost/chrono.hpp>
 
@@ -84,11 +83,16 @@ bool load(const std::string& fn, bignum&n, boost::chrono::system_clock::time_poi
 
 std::ostream& operator<<(std::ostream& o, const bignum& n)
 {
-  boost::io::ios_flags_saver  ifs( o );
-  for(int i=n.num.size();i>0;--i)
+  std::ios_base::fmtflags f( o.flags() );
+  o << std::hex;
+  auto digit=n.num.rbegin();
+  o << (*digit);
+  ++digit;
+  for(; digit!=n.num.rend();++digit)
   {
-    o << " " << std::hex << std::setfill('0') << std::setw(16) << n.num[i-1];
+    o << " "  << std::setfill('0') << std::setw(16) << (*digit);
   }
+  o.flags( f );
   return o;
 }
 
@@ -210,7 +214,6 @@ int main(int argc, char **argv)
     }
     else
     {
-
       std::cerr << "loaded cache file: " << cache << std::endl;
     }
 
