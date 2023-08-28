@@ -171,8 +171,7 @@ bignum mersenne(int power)
   }
   if (rest)
   {
-    ret.num.push_back(0);
-    for(int i=0;i<rest;++i) ret.num.back()|=(1ULL<<i);
+    ret.num.push_back((1ULL<<rest)-1);
   }
   return ret;
 }
