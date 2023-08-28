@@ -237,7 +237,7 @@ calculate:
       auto sec = dur.count();
       int min = sec/60;
       sec = sec-(min*60);
-      std::cout << val << "," << steps <<"," << "\"" << min << "m" << sec << "s\"," << dur.count() << ", 2^" << zero_run << std::endl;
+      std::cout << val << "," << steps <<"," << "\"" << min << "m" << sec << "s\"," << dur.count() << "," << zero_run << std::endl;
       std::remove(cache.c_str());
     }
   }
