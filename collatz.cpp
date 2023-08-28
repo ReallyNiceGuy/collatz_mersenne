@@ -29,7 +29,7 @@ struct bignum
   // x / (2^n)
   uint64_t by2n(uint64_t &zero_run);
   bool is_odd() const { return num[0]&1;}
-  bool is_one() const { return num[0]==1 && num.size()==1;}
+  bool is_one() const { return num.size()==1 && num[0]==1;}
 };
 
 ostream& write(ostream& ofs, const bignum& n)
