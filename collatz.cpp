@@ -136,7 +136,7 @@ uint64_t bignum::x3p1by2()
   res>>=64; //pull carry into lower uint64_t
   for(size_t i=1;i<num.size();++i)
   {
-    res=((uint128_t)3)*num[i]+res; //3x+carry in uint128_t, we save the carry on the upper part
+    res+=((uint128_t)3)*num[i]; //3x+carry in uint128_t, we save the carry on the upper part
     num[i] = res; //lower part of 3x+carry
     res>>=64; //pull carry into lower uint64_t
     num[i-1]=(num[i-1]>>1)|(num[i]<<63); //divide previous by 2 and pull lowest bit from this one
