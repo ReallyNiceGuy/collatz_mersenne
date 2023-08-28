@@ -177,6 +177,7 @@ bignum mersenne(int power)
   {
     ret.num.push_back((1ULL<<rest)-1);
   }
+  std::cerr << "bignum is aligned: " << !(((intptr_t)ret.num.data())%8) << std::endl;
   return ret;
 }
 
@@ -192,7 +193,7 @@ int main(int argc, char **argv)
     int val = strtol(argv[1], &pos, 10);
     uint64_t steps{};
     uint64_t zero_run{};
-    if (pos == argv[0])
+    if (pos == argv[1])
     {
       std::cerr << "Needs a positive number as parameter" << std::endl;
       exit(1);
