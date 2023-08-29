@@ -102,6 +102,7 @@ uint64_t bignum::by2n(uint64_t& zero_run)
   uint64_t i{};
   if (num[0] == 0) //full item right shift, cheap
   {
+    if (num.size() == 1) return 0; //Nothing to do, number is 0
     //This is very unlikely to happen at all, but as
     // __builtin_ctzll is undefined for 0, I might as
     // well use the guard check of 0 for something useful
