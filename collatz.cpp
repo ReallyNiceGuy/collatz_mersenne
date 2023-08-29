@@ -29,6 +29,7 @@ struct bignum
   uint64_t by2n(uint64_t &zero_run);
   bool is_odd() const { return num[0]&1;}
   bool is_one() const { return num.size()==1 && num[0]==1;}
+  bool is_zero() const { return num.size()==1 && num[0]==0;}
 };
 
 ostream& write(ostream& ofs, const bignum& n)
@@ -124,7 +125,7 @@ uint64_t bignum::by2n(uint64_t& zero_run)
     num[i]=(num[i]>>lshift)|(num[i+1]<<rshift);
   }
   num[last]>>=lshift;
-  if (num[last]==0 && num.size()>1) num.pop_back(); //remove MSI if 0
+  if (num[last]==0) num.pop_back(); //remove MSI if 0, LSI can never be 0
   auto steps=lshift+i;
   if (steps>=zero_run) zero_run = steps+1;
   return steps;
@@ -148,12 +149,13 @@ uint64_t bignum::x3p1by2()
     num[i-1]=(num[i-1]>>1)|(num[i]<<63); //divide previous by 2 and pull lowest bit from this one
   }
   num[last]>>=1; //divide MSI by 2
-  if (num[last]==0 && num.size()>1) num.pop_back(); //remove MSI if 0
+  if (num[last]==0) num.pop_back(); //remove MSI if 0. LSI can never be 0
   return 2;
 }
 
 uint64_t collatz(bignum& n, uint64_t steps, uint64_t& zero_run)
 {
+  if (n.is_zero()) return 0;
   while (!(n.is_one() || interrupted))
   {
     if (n.is_odd()) steps+=n.x3p1by2();
