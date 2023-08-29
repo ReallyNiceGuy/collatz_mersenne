@@ -117,16 +117,16 @@ uint64_t bignum::by2n(uint64_t& zero_run)
     num.erase(num.begin(), end); //and remove them in one full swoop
   }
 
-  int lshift = __builtin_ctzll(num[0]); // How many zeroes left?
-  int rshift = 64-lshift;
+  int rshift = __builtin_ctzll(num[0]); // How many zeroes left?
+  int lshift = 64-rshift;
   auto last = num.size()-1;
   for(size_t i=0;i<last;++i)
   {
-    num[i]=(num[i]>>lshift)|(num[i+1]<<rshift);
+    num[i]=(num[i]>>rshift)|(num[i+1]<<lshift);
   }
-  num[last]>>=lshift;
+  num[last]>>=rshift;
   if (num[last]==0) num.pop_back(); //remove MSI if 0, LSI can never be 0
-  auto steps=lshift+i;
+  auto steps=rshift+i;
   if (steps>=zero_run) zero_run = steps+1;
   return steps;
 }
@@ -158,8 +158,7 @@ uint64_t collatz(bignum& n, uint64_t steps, uint64_t& zero_run)
   if (n.is_zero()) return 0;
   while (!(n.is_one() || interrupted))
   {
-    if (n.is_odd()) steps+=n.x3p1by2();
-    else steps+=n.by2n(zero_run);
+    steps += n.is_odd() ? n.x3p1by2() : n.by2n(zero_run);
   }
   return steps;
 }
