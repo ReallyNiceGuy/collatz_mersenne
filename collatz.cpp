@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <csignal>
 #include <ios>
+#include <cctype>
 #include <boost/chrono.hpp>
 
 volatile int interrupted{0};
@@ -27,41 +28,24 @@ struct bignum
   uint64_t x3p1by2();
   // x / (2^n)
   uint64_t by2n(uint64_t &zero_run);
+  void rshift(int count);
   bool is_odd() const { return num[0]&1;}
   bool is_one() const { return num.size()==1 && num[0]==1;}
   bool is_zero() const { return num.size()==1 && num[0]==0;}
+  static bignum mersenne(int power);
+  static bignum two_np1(int power);
 };
 
-ostream& write(ostream& ofs, const bignum& n)
-{
-  vector<uint64_t>::size_type len{n.num.size()};
-  vector<uint64_t>::size_type cap{n.num.capacity()};
-  ofs.write((char*)&cap,sizeof(cap));
-  ofs.write((char*)&len,sizeof(len));
-  ofs.write((char*)&n.num[0],sizeof(uint64_t)*len);
-  return ofs;
-}
-
-istream& read(istream& ifs, bignum& n)
-{
-  vector<uint64_t>::size_type len{};
-  vector<uint64_t>::size_type cap{};
-  ifs.read((char*)&cap,sizeof(cap));
-  ifs.read((char*)&len,sizeof(len));
-  n.num.clear();
-  n.num.reserve(cap);
-  n.num.resize(len);
-  ifs.read((char*)&n.num[0],sizeof(uint64_t)*len);
-  return ifs;
-}
+std::ostream& operator<<(std::ostream& o, const bignum& n);
+std::istream& operator>>(std::istream& is, bignum& n);
 
 void save(const std::string& fn, const bignum&n, double elapsed, uint64_t count, uint64_t zero_run)
 {
   std::ofstream ofs(fn, std::ios_base::binary | std::ios_base::out | std::ios_base::trunc);
-  write(ofs,n);
-  ofs.write((char*)&count,sizeof(count));
-  ofs.write((char*)&elapsed,sizeof(elapsed));
-  ofs.write((char*)&zero_run,sizeof(zero_run));
+  ofs << n << ' '
+      << count << ' '
+      << elapsed << ' '
+      << zero_run;
   std::cerr << "Elapsed: " << elapsed << ", steps: " << count << ", bits (approx): " << n.num.size()*64 << std::endl;
 }
 
@@ -69,16 +53,16 @@ bool load(const std::string& fn, bignum&n, boost::chrono::system_clock::time_poi
 {
   std::ifstream ifs(fn, std::ios_base::binary | std::ios_base::in);
   if (ifs.fail()) return false;
-  read(ifs,n);
+  ifs >> n;
   if (ifs.fail()) return false;
-  ifs.read((char*)&count,sizeof(count));
+  ifs >> count;
   if (ifs.fail()) return false;
   double d;
-  ifs.read((char*)&d,sizeof(d));
+  ifs >> d;
   if (ifs.fail()) return false;
   t = boost::chrono::system_clock::now() -
       boost::chrono::duration_cast<boost::chrono::system_clock::time_point::duration>(boost::chrono::duration<double>(d));
-  ifs.read((char*)&zero_run,sizeof(zero_run));
+  ifs >> zero_run;
   return !ifs.fail();
 }
 
@@ -86,15 +70,65 @@ std::ostream& operator<<(std::ostream& o, const bignum& n)
 {
   std::ios_base::fmtflags f( o.flags() );
   o << std::hex;
-  auto digit=n.num.rbegin();
-  o << (*digit);
-  ++digit;
-  for(; digit!=n.num.rend();++digit)
+  for(auto digit=n.num.rbegin(); digit!=n.num.rend();++digit)
   {
-    o << " "  << std::setfill('0') << std::setw(16) << (*digit);
+    o << std::setfill('0') << std::setw(16) << (*digit);
   }
   o.flags( f );
   return o;
+}
+
+std::istream& operator>>(std::istream& is, bignum& n)
+{
+  std::vector<char> buffer;
+  std::istream::sentry s(is);
+  if (s) while (is.good()) {
+    int c = is.get();
+    if (std::isdigit(c) ||
+        (c>='a' && c<='f') ||
+        (c>='A' && c<='F')) buffer.push_back(c);
+    else
+    {
+      is.unget();
+      break;
+    }
+  }
+  if (buffer.size()==0)
+  {
+    is.setstate(std::ios::failbit);
+  }
+  else
+  {
+    n.num.clear();
+    auto len = buffer.size();
+    auto items = len/16;
+    auto rest = len%16;
+    buffer.push_back(0);
+    for(decltype(items) i=0;i<items;++i)
+    {
+      auto pos=len-((i+1)*16);
+      n.num.push_back(strtoull(&buffer[pos],nullptr,16));
+      buffer[pos]=0;
+    }
+    if (rest)
+    {
+      n.num.push_back(strtoull(&buffer[0],nullptr,16));
+    }
+  }
+  return is;
+}
+
+void bignum::rshift(int count)
+{
+  if (count==0) return;
+  int lshift = 64-count;
+  auto last = num.size()-1;
+  for(size_t i=0;i<last;++i)
+  {
+    num[i]=(num[i]>>count)|(num[i+1]<<lshift);
+  }
+  num[last]>>=count;
+  if (num[last]==0) num.pop_back(); //remove MSI if 0, LSI can never be 0
 }
 
 uint64_t bignum::by2n(uint64_t& zero_run)
@@ -118,16 +152,9 @@ uint64_t bignum::by2n(uint64_t& zero_run)
     num.erase(num.begin(), end); //and remove them in one full swoop
   }
 
-  int rshift = __builtin_ctzll(num[0]); // How many zeroes left?
-  int lshift = 64-rshift;
-  auto last = num.size()-1;
-  for(size_t i=0;i<last;++i)
-  {
-    num[i]=(num[i]>>rshift)|(num[i+1]<<lshift);
-  }
-  num[last]>>=rshift;
-  if (num[last]==0) num.pop_back(); //remove MSI if 0, LSI can never be 0
-  auto steps=rshift+i;
+  int count = __builtin_ctzll(num[0]); // How many zeroes left?
+  rshift(count);
+  auto steps=count+i;
   if (steps>=zero_run) zero_run = steps+1;
   return steps;
 }
@@ -164,7 +191,7 @@ uint64_t collatz(bignum& n, uint64_t steps, uint64_t& zero_run)
   return steps;
 }
 
-bignum mersenne(int power)
+bignum bignum::mersenne(int power)
 {
   if (power == 0)
     return bignum{.num{0}};
@@ -179,6 +206,18 @@ bignum mersenne(int power)
   {
     ret.num.push_back((1ULL<<rest)-1);
   }
+  std::cerr << "bignum is aligned: " << !(((intptr_t)ret.num.data())%8) << std::endl;
+  return ret;
+}
+
+bignum bignum::two_np1(int power)
+{
+  int rest=(power)%64;
+  int items=(power)/64;
+  bignum ret;
+  ret.num = vector<uint64_t>(items+1);
+  ret.num.back()=1ULL<<rest;
+  ret.num[0]+=1;
   std::cerr << "bignum is aligned: " << !(((intptr_t)ret.num.data())%8) << std::endl;
   return ret;
 }
@@ -211,7 +250,7 @@ int main(int argc, char **argv)
     bignum n;
     if (!load(cache,n,start, steps, zero_run))
     {
-      n=mersenne(val);
+      n=bignum::mersenne(val);
       std::cerr << "starting from scratch: " << argv[1] << std::endl;
       start = boost::chrono::system_clock::now();
     }
