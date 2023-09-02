@@ -234,10 +234,10 @@ bool load_from_file(const std::string& fn, bignum &n)
   return (!ifs.fail());
 }
 
-bool make_mersenne(char *power, bignum &n)
+bool get_positive_number(char *power, int& val)
 {
   char *pos;
-  int val = strtol(power, &pos, 10);
+  val = strtol(power, &pos, 10);
   if (pos == power)
   {
     std::cerr << "Needs a positive number as parameter" << std::endl;
@@ -248,6 +248,13 @@ bool make_mersenne(char *power, bignum &n)
     std::cerr << "Needs a positive number as parameter" << std::endl;
     return false;
   }
+  return true;  
+}
+
+bool make_mersenne(char *power, bignum &n)
+{
+  int val;
+  if (!get_positive_number(power,val)) return false;
   n = bignum::mersenne(val);
   return true;
 }
@@ -273,6 +280,12 @@ int main(int argc, char **argv)
         if (!load_from_file(argv[2], n)) exit(1);
       if (sw == "-m")
         if (!make_mersenne(argv[2], n)) exit(1);
+      if (sw == "-n")
+      {
+        int val;
+        if (!get_positive_number(argv[2], val)) exit(1);
+        n.num.push_back(val);
+      }
       std::cerr << "starting from scratch: " << argv[2] << std::endl;
       start = boost::chrono::system_clock::now();
     }
@@ -306,6 +319,6 @@ calculate:
   }
   else
   {
-    std::cout << "Usage collatz {-f filename} | { -m power_of_2 }" << std::endl;
+    std::cout << "Usage collatz {-f filename} | { -m power_of_2 } | {-n value }" << std::endl;
   }
 }
