@@ -186,7 +186,10 @@ uint64_t collatz(bignum& n, uint64_t steps, uint64_t& zero_run)
   if (n.is_zero()) return 0;
   while (!(n.is_one() || interrupted))
   {
-    steps += n.is_odd() ? n.x3p1by2() : n.by2n(zero_run);
+    if (n.is_odd())
+      steps += n.x3p1by2();
+    else
+      steps +=n.by2n(zero_run);
   }
   return steps;
 }
@@ -222,36 +225,55 @@ bignum bignum::two_np1(int power)
   return ret;
 }
 
+bool load_from_file(const std::string& fn, bignum &n)
+{
+  std::ifstream ifs(fn, std::ios_base::binary | std::ios_base::in);
+  if (ifs.fail()) return false;
+  ifs >> n;
+  std::cerr << "Could not load file: " << fn << std::endl;
+  return (!ifs.fail());
+}
+
+bool make_mersenne(char *power, bignum &n)
+{
+  char *pos;
+  int val = strtol(power, &pos, 10);
+  if (pos == power)
+  {
+    std::cerr << "Needs a positive number as parameter" << std::endl;
+    return false;
+  }
+  if (val<=0)
+  {
+    std::cerr << "Needs a positive number as parameter" << std::endl;
+    return false;
+  }
+  n = bignum::mersenne(val);
+  return true;
+}
+
 int main(int argc, char **argv)
 {
-  if (argc > 1)
+  if (argc > 2)
   {
       // Install a signal handler
     std::signal(SIGINT, signal_handler);
     std::signal(SIGTERM, signal_handler);
     std::signal(SIGHUP, signal_handler);
-    char *pos;
-    int val = strtol(argv[1], &pos, 10);
     uint64_t steps{};
     uint64_t zero_run{};
-    if (pos == argv[1])
-    {
-      std::cerr << "Needs a positive number as parameter" << std::endl;
-      exit(1);
-    }
-    if (val<=0)
-    {
-      std::cerr << "Needs a positive number as parameter" << std::endl;
-      exit(1);
-    }
-    std::string cache{argv[1]};
+    std::string cache{argv[2]};
+    std::string sw{argv[1]};
     cache+=".cache";
     boost::chrono::system_clock::time_point start;
     bignum n;
     if (!load(cache,n,start, steps, zero_run))
     {
-      n=bignum::mersenne(val);
-      std::cerr << "starting from scratch: " << argv[1] << std::endl;
+      if (sw == "-f")
+        if (!load_from_file(argv[2], n)) exit(1);
+      if (sw == "-m")
+        if (!make_mersenne(argv[2], n)) exit(1);
+      std::cerr << "starting from scratch: " << argv[2] << std::endl;
       start = boost::chrono::system_clock::now();
     }
     else
@@ -278,8 +300,12 @@ calculate:
       auto sec = dur.count();
       int min = sec/60;
       sec = sec-(min*60);
-      std::cout << val << "," << steps <<"," << "\"" << min << "m" << sec << "s\"," << dur.count() << "," << zero_run << std::endl;
+      std::cout << argv[2] << "," << steps <<"," << "\"" << min << "m" << sec << "s\"," << dur.count() << "," << zero_run << std::endl;
       std::remove(cache.c_str());
     }
+  }
+  else
+  {
+    std::cout << "Usage collatz {-f filename} | { -m power_of_2 }" << std::endl;
   }
 }
