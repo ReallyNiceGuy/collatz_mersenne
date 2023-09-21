@@ -30,7 +30,7 @@ struct bignum
   uint64_t by2n(uint64_t &zero_run);
   void rshift(int count);
   bool is_odd() const { return num[0]&1;}
-  bool is_one() const { return num.size()==1 && num[0]==1;}
+  bool gt_one() const { return  num[0]>1 || num.size()>1;}
   bool is_zero() const { return num.size()==1 && num[0]==0;}
   static bignum mersenne(int power);
   static bignum two_np1(int power);
@@ -184,7 +184,7 @@ uint64_t bignum::x3p1by2()
 uint64_t collatz(bignum& n, uint64_t steps, uint64_t& zero_run)
 {
   if (n.is_zero()) return 0;
-  while (!(n.is_one() || interrupted))
+  while ((n.gt_one() && !interrupted))
   {
     if (n.is_odd())
       steps += n.x3p1by2();
