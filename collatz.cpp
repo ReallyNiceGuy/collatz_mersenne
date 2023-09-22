@@ -267,6 +267,7 @@ int main(int argc, char **argv)
     std::signal(SIGINT, signal_handler);
     std::signal(SIGTERM, signal_handler);
     std::signal(SIGHUP, signal_handler);
+    std::signal(SIGALRM, signal_handler);
     uint64_t steps{};
     uint64_t zero_run{};
     std::string cache{argv[2]};
@@ -297,13 +298,17 @@ int main(int argc, char **argv)
     }
 
 calculate:
+    alarm(60);
     steps = collatz(n, steps, zero_run);
     dur = boost::chrono::system_clock::now() - start;
     if (interrupted)
     {
-      std::cerr << "\ninterrupted, saving cache file: " << cache << std::endl;
+      if (interrupted != SIGALRM)
+      {
+        std::cerr << "\ninterrupted, saving cache file: " << cache << std::endl;
+      }
       save(cache,n, dur.count(), steps, zero_run);
-      if (interrupted == SIGHUP)
+      if (interrupted == SIGHUP || interrupted == SIGALRM)
       {
         interrupted = 0;
         goto calculate;
