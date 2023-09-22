@@ -270,9 +270,11 @@ int main(int argc, char **argv)
     uint64_t steps{};
     uint64_t zero_run{};
     std::string cache{argv[2]};
+    cache += argv[1];
     std::string sw{argv[1]};
     cache+=".cache";
     boost::chrono::system_clock::time_point start;
+    boost::chrono::duration<double> dur;
     bignum n;
     if (!load(cache,n,start, steps, zero_run))
     {
@@ -296,9 +298,9 @@ int main(int argc, char **argv)
 
 calculate:
     steps = collatz(n, steps, zero_run);
+    dur = boost::chrono::system_clock::now() - start;
     if (interrupted)
     {
-      boost::chrono::duration<double> dur = boost::chrono::system_clock::now() - start;
       std::cerr << "\ninterrupted, saving cache file: " << cache << std::endl;
       save(cache,n, dur.count(), steps, zero_run);
       if (interrupted == SIGHUP)
@@ -309,7 +311,6 @@ calculate:
     }
     else
     {
-      boost::chrono::duration<double> dur = boost::chrono::system_clock::now() - start;
       auto sec = dur.count();
       int min = sec/60;
       sec = sec-(min*60);
