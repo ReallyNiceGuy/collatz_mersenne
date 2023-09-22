@@ -120,7 +120,11 @@ int main(int argc, char ** argv)
     }
     else
     {
-        std::cout << "Usage: collatz_gmp {-f filename} | { -m power_of_2 } | {-n value }" << std::endl;
+        std::cout << "Usage: collatz_gmp {-f filename} | { -m power } | {-n value }\n";
+        std::cout << "       power_of_2 will create a mersenne number with the value\n";
+        std::cout << "         2**power - 1\n";
+        std::cout << "       filename should contain an arbitrarily large integer\n";
+        std::cout << "       value is an arbitrarily large integer"  << std::endl;
         exit(1);
     }
     boost::chrono::system_clock::time_point start;
