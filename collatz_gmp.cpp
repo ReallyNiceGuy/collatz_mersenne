@@ -56,7 +56,7 @@ bool get_positive_number(char *power, unsigned long int& res)
     return false;
   }
   res = val;
-  return true;  
+  return true;
 }
 
 bool save_cache(const std::string& cache, const mpz_t &n, double count, unsigned int steps)
@@ -99,10 +99,10 @@ bool load_file(const char* filename, mpz_t &n)
     std::fclose(fp);
     return ret;
 }
-    
+
 int main(int argc, char ** argv)
 {
-      // Install a signal handler
+    // Install a signal handler
     std::signal(SIGINT, signal_handler);
     std::signal(SIGTERM, signal_handler);
     std::signal(SIGHUP, signal_handler);
@@ -179,16 +179,16 @@ calculate:
     dur += boost::chrono::system_clock::now() - start;
     if (interrupted)
     {
-      if (interrupted != SIGALRM)
-      {
-          std::cerr << "\ninterrupted, saving cache file: " << cache << std::endl;
-      }
-      save_cache(cache,n, dur.count(), steps);
-      if (interrupted == SIGHUP || interrupted == SIGALRM)
-      {
-        interrupted = 0;
-        goto calculate;
-      }
+        if (interrupted != SIGALRM)
+        {
+            std::cerr << "\ninterrupted, saving cache file: " << cache << std::endl;
+        }
+        save_cache(cache,n, dur.count(), steps);
+        if (interrupted == SIGHUP || interrupted == SIGALRM)
+        {
+            interrupted = 0;
+            goto calculate;
+        }
     }
     else
     {
