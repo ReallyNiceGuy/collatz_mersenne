@@ -130,28 +130,34 @@ int main(int argc, char ** argv)
     boost::chrono::system_clock::time_point start;
     double already_run{0};
     mpz_t n;
-    if (!load_cache(cache, n, already_run, steps))
+    if (sw == "-m")
     {
-        if (sw == "-m")
+        unsigned long int power = 0;
+        if (!get_positive_number(argv[2],power))
         {
-            unsigned long int power = 0;
-            if (!get_positive_number(argv[2],power))
-            {
-                exit(1);
-            }
-            type = "mersenne";
-            mersenne_init(n,power);
+            exit(1);
         }
-        else if (sw == "-f")
+        type = "mersenne";
+        if (!load_cache(cache, n, already_run, steps))
+        {
+          mersenne_init(n,power);
+        }
+    }
+    else if (sw == "-f")
+    {
+        if (!load_cache(cache, n, already_run, steps))
         {
             if (!load_file(argv[2], n))
             {
                 std::cerr << "Could not load file '" << argv[2] << std::endl;
                 exit(1);
             }
-            type = "file";
         }
-        else if (sw == "-n")
+        type = "file";
+    }
+    else if (sw == "-n")
+    {
+        if (!load_cache(cache, n, already_run, steps))
         {
             if (mpz_init_set_str(n,argv[2],0) == -1)
             {
@@ -163,13 +169,13 @@ int main(int argc, char ** argv)
                 std::cerr << "Must be a positive integer" << std::endl;
                 exit(1);
             }
-            type = "number";
         }
-        else
-        {
-            std::cerr << "Unknown option '" << argv[1] << "'" << std::endl;
-            exit(1);
-        }
+        type = "number";
+    }
+    else
+    {
+        std::cerr << "Unknown option '" << argv[1] << "'" << std::endl;
+        exit(1);
     }
     boost::chrono::duration<double,boost::ratio<1>> dur(already_run);
 calculate:
@@ -177,13 +183,13 @@ calculate:
     start = boost::chrono::system_clock::now();
     steps = collatz(n, steps);
     dur += boost::chrono::system_clock::now() - start;
+    save_cache(cache,n, dur.count(), steps);
     if (interrupted)
     {
         if (interrupted != SIGALRM)
         {
             std::cerr << "\ninterrupted, saving cache file: " << cache << std::endl;
         }
-        save_cache(cache,n, dur.count(), steps);
         if (interrupted == SIGHUP || interrupted == SIGALRM)
         {
             interrupted = 0;
@@ -200,6 +206,5 @@ calculate:
         int day = hour/24;
         hour = hour - (day*24);
         std::cout << type << "," << argv[2] << "," << steps <<"," << "\"" << day << "d " << hour << ":" << min << ":" << sec << "\"," << dur.count() << std::endl;
-        std::remove(cache.c_str());
     }
 }
