@@ -6,6 +6,7 @@
 #include <boost/chrono.hpp>
 
 static volatile int interrupted{0};
+using counter_t = uint64_t;
 
 void signal_handler(int signal)
 {
@@ -19,7 +20,7 @@ void mersenne_init(mpz_t& n, unsigned long int power)
     mpz_sub_ui(n,n,1);
 }
 
-unsigned int collatz(mpz_t& n, unsigned long int c)
+counter_t collatz(mpz_t& n, counter_t c)
 {
     while (!interrupted && mpz_cmp_ui(n,1)>0)
     {
@@ -59,7 +60,7 @@ bool get_positive_number(char *power, unsigned long int& res)
   return true;
 }
 
-bool save_cache(const std::string& cache, const mpz_t &n, double count, unsigned int steps)
+bool save_cache(const std::string& cache, const mpz_t &n, double count, counter_t steps)
 {
     FILE* fp = std::fopen(cache.c_str(), "w");
     if (!fp) return false;
@@ -75,10 +76,10 @@ error_handler:
     return false;
 }
 
-bool load_cache(const std::string& cache, mpz_t &n, double &count, unsigned int &steps)
+bool load_cache(const std::string& cache, mpz_t &n, double &count, counter_t &steps)
 {
     double tmp_count;
-    unsigned int tmp_steps;
+    counter_t tmp_steps;
     FILE* fp = std::fopen(cache.c_str(), "r");
     if (!fp) return false;
     if (std::fread(static_cast<void*>(&tmp_count),sizeof(tmp_count),1,fp) != 1) return false;
@@ -110,7 +111,7 @@ int main(int argc, char ** argv)
     std::string cache;
     std::string sw;
     std::string type;
-    unsigned int steps{};
+    counter_t steps{};
     if (argc == 3)
     {
         cache = argv[2];
